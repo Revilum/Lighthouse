@@ -7,14 +7,23 @@ import random
 p = Pyghthouse("MrSubidubi", "API-TOK_pZhT-JIeS-OPhx-hYIk-lnPe",
                ignore_ssl_cert=True)  # Hier eigene Werte eintragen!
 img = Pyghthouse.empty_image()
+currentTick = 0
+swapEnemyDirection = False
 gamefield = [[[]]]
+outerBoundary = 1
 playerX = (len(img[0]) - 1) / 2
 barrierwidth = 4
-barrierplacement = len(img) - 6
+barrierSpawnRow = len(img) - 6
 firstEnemySpawnRow = 1
 maxEnemiesPerRow = 12  # less than 14
-EnemySpawnChance = 0.95
+EnemySpawnChance = 1
 barrierHP = 50
+gameEntities = {
+    "enemy": [(1, 1), [0, 255, 255]],
+    "barrier": [(10, barrierHP), [255, 0, 0]],
+    "bedrock": [(99, -1), [0, 255, 255]],
+    "none": [(0, 0), [0, 0, 0]]
+}
 
 
 # END define global parameters
@@ -28,20 +37,9 @@ def init():
     # keyboard.on_press_key("escape", lambda _: pause()) - TODO possible pause function
 
 
-def gamefielddata(input, *barriernumber):
-    handednumber = 0
-    if len(barriernumber) != 0:
-        handednumber = barriernumber[0]
-    possibilities = {
-        "enemy": [1, 1],
-        "barrier": [10 + handednumber, barrierHP]
-    }
-    return possibilities.get(input, [0, 0])
-
-
 def resetgamefield():
     global gamefield
-    gamefield = [[gamefielddata("none") for j in range(len(img[0]))] for i in range(len(img))]
+    gamefield = [[gameEntities["none"][0] for j in range(len(img[0]))] for i in range(len(img))]
 
 
 def initgamefield(barriers):
@@ -55,18 +53,40 @@ def initgamefield(barriers):
             for y in range(2):
                 if y == 0 and x != 0 and x != barrierwidth - 1 or y == 1:
                     # somewhat hardcoded to barrierwitdth | 2 and larger than 2
-                    gamefield[barrierplacement + y][round(nextbarrier) + x + barrier * barrierwidth] = gamefielddata(
-                        "barrier", barrier)
-    placeenemies(4)
+                    gamefield[barrierSpawnRow + y][round(nextbarrier) + x + barrier * barrierwidth] = gameEntities[
+                        "barrier"][0]
+    spawnenemies(4)
 
 
-def placeenemies(rows):
+def spawnenemies(rows):
     global gamefield
-    sidespace = len(gamefield[0]) - maxEnemiesPerRow * 2
+    sidespace = round(len(gamefield[0]) / 2 - maxEnemiesPerRow)
     for y in range(rows):
         for x in range(maxEnemiesPerRow):
-            if random.random() < EnemySpawnChance:
-                gamefield[firstEnemySpawnRow + y][sidespace + x * 2] = gamefielddata("enemy")
+            if random.random() <= EnemySpawnChance:
+                gamefield[firstEnemySpawnRow + y][sidespace + x * 2] = gameEntities["enemy"][0]
+
+
+def moveenemies():
+    global gamefield
+    for y in range(barrierSpawnRow - 1, firstEnemySpawnRow - 1, -1):
+        if (y + int(swapEnemyDirection)) % 2 == 0:
+            for x in range(outerBoundary, len(gamefield[y]) - outerBoundary):
+                if gamefield[y][x] == gameEntities["enemy"][0]:
+                    gamefield[y][x] = gameEntities["none"][0]
+                    if (y + int(swapEnemyDirection)) % 2 == 0:
+                        if x == outerBoundary:
+                            gamefield[y + 1][x] = gameEntities["enemy"][0]
+                        else:
+                            gamefield[y][x - 1] = gameEntities["enemy"][0]
+        else:
+            for x in range(len(gamefield[y]) - outerBoundary - 1, outerBoundary - 1, -1):
+                if gamefield[y][x] == gameEntities["enemy"][0]:
+                    gamefield[y][x] = gameEntities["none"][0]
+                    if x == len(gamefield[y]) - outerBoundary - 1:
+                        gamefield[y + 1][x] = gameEntities["enemy"][0]
+                    else:
+                        gamefield[y][x + 1] = gameEntities["enemy"][0]
 
 
 def keyoptions(option):
@@ -83,11 +103,23 @@ def shoot():
     return
 
 
+def gamefieldrender():
+    colorcode = {i[0]: i[1] for i in list(gameEntities.values())}
+    for ypos, y in enumerate(gamefield):
+        for xpos, x in enumerate(y):
+            img[ypos][xpos] = colorcode[tuple(x)]
+    Pyghthouse.set_image(p, img)
+
+
 def main():
     init()
     initgamefield(4)
-    for i in gamefield:
-        print(i)
+    gamefieldrender()
+    time.sleep(5)
+    for i in range(10):
+        moveenemies()
+        gamefieldrender()
+        time.sleep(1)
     Pyghthouse.close(p)
 
 
