@@ -42,7 +42,7 @@ def init():
 
 def resetgamefield():
     global gamefield
-    # iniializes a gamefield (here based upon the dimensions of the image of the lighthouse) with elemets of type "none"
+    # iniializes a gamefield (here based upon dimensions of the image of the lighthouse) with elemets of type "none"
     gamefield = [[gameEntities["none"][0] for j in range(len(img[0]))] for i in range(len(img))]
 
 
