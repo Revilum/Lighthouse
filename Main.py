@@ -4,7 +4,7 @@ import keyboard
 import random
 
 # BEGIN define global parameters
-p = Pyghthouse("MrSubidubi", "API-TOK_pZhT-JIeS-OPhx-hYIk-lnPe",
+p = Pyghthouse("MrSubidubi", "API-TOK_5lLL-mYtC-Iisr-q76Q-YiH+",
                ignore_ssl_cert=True)  # Hier eigene Werte eintragen!
 img = Pyghthouse.empty_image()
 currentTick = 0
@@ -27,6 +27,8 @@ gameEntities = {
     "none": [(0, 0), [0, 0, 0]],
     "player": [(69, 3, playerX), [255, 0, 0]]
 }
+
+
 # END define global parameters
 
 def init():
@@ -62,7 +64,7 @@ def initgamefield(barriers):
                     gamefield[barrierSpawnRow + y][round(nextbarrier) + x + barrier * barrierwidth] = gameEntities[
                         "barrier"][0]
     # Initialize first player position
-    gamefield[playerY][round(playerX)] = gameEntities["player"]
+    gamefield[playerY][round(playerX)] = gameEntities["player"][0]
     spawnenemies(4, 14)
 
 
@@ -135,6 +137,7 @@ def gamefieldrender():
     colorcode = {i[0]: i[1] for i in list(gameEntities.values())}
     for ypos, y in enumerate(gamefield):
         for xpos, x in enumerate(y):
+            print(x)
             img[ypos][xpos] = colorcode[tuple(x)]
     # sets the image onto the lighthouse once done
     Pyghthouse.set_image(p, img)
