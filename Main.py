@@ -21,11 +21,12 @@ firstEnemySpawnRow = 1
 EnemySpawnChance = 1
 barrierHP = 50
 gameEntities = {
-    "enemy": [(1, 1), [0, 255, 255]],
-    "barrier": [(10, barrierHP), [255, 0, 0]],
-    "bedrock": [(99, -1), [0, 255, 255]],
-    "none": [(0, 0), [0, 0, 0]],
-    "player": [(69, 3, playerX), [255, 0, 0]]
+    "enemy": [["enemy", 1], [0, 255, 255]],
+    "barrier": [["barrier", barrierHP], [255, 0, 0]],
+    "bedrock": [["bedrock", -1], [0, 255, 255]],
+    "none": [["none", 0], [0, 0, 0]],
+    "player": [["player", 3, playerX], [255, 0, 0]],
+    "projectile": [["projectile", -1, playerX, True], [255, 255, 255]]  # Fourth parameter indicates upward movement
 }
 
 
@@ -38,14 +39,14 @@ def init():
     # initialize keybinds upon press
     keyboard.on_press_key("a", lambda _: move("left"))
     keyboard.on_press_key("d", lambda _: move("right"))
-    # keyboard.on_press_key("space", lambda _: shoot())
+    keyboard.on_press_key("space", lambda _: shoot())
     # keyboard.on_press_key("escape", lambda _: pause()) - TODO possible pause function
 
 
 def resetgamefield():
     global gamefield
     # iniializes a gamefield (here based upon dimensions of the image of the lighthouse) with elemets of type "none"
-    gamefield = [[gameEntities["none"][0] for j in range(len(img[0]))] for i in range(len(img))]
+    gamefield = [[gameEntities["none"][0].copy() for j in range(len(img[0]))] for i in range(len(img))]
 
 
 def initgamefield(barriers):
@@ -62,7 +63,7 @@ def initgamefield(barriers):
                 if y == 0 and x != 0 and x != barrierwidth - 1 or y == 1:
                     # somewhat hardcoded to barrierwitdth | 2 and larger than 2
                     gamefield[barrierSpawnRow + y][round(nextbarrier) + x + barrier * barrierwidth] = gameEntities[
-                        "barrier"][0]
+                        "barrier"][0].copy()
     # Initialize first player position
     gamefield[playerY][round(playerX)] = gameEntities["player"][0]
     spawnenemies(4, 14)
@@ -76,7 +77,7 @@ def spawnenemies(rows, enemiesPerRow):
     for y in range(rows):
         for x in range(enemiesPerRow):
             if random.random() <= EnemySpawnChance:
-                gamefield[firstEnemySpawnRow + y][sidespace + x] = gameEntities["enemy"][0]
+                gamefield[firstEnemySpawnRow + y][sidespace + x] = gameEntities["enemy"][0].copy()
 
 
 def moveenemies():
@@ -87,20 +88,20 @@ def moveenemies():
         if (y + int(swapEnemyDirection)) % 2 == 0:
             for x in range(outerBoundary, len(gamefield[y]) - outerBoundary):
                 if gamefield[y][x] == gameEntities["enemy"][0]:
-                    gamefield[y][x] = gameEntities["none"][0]
+                    gamefield[y][x] = gameEntities["none"][0].copy()
                     if (y + int(swapEnemyDirection)) % 2 == 0:
                         if x == outerBoundary:
-                            gamefield[y + 1][x] = gameEntities["enemy"][0]
+                            gamefield[y + 1][x] = gameEntities["enemy"][0].copy()
                         else:
-                            gamefield[y][x - 1] = gameEntities["enemy"][0]
+                            gamefield[y][x - 1] = gameEntities["enemy"][0].copy()
         else:
             for x in range(len(gamefield[y]) - outerBoundary - 1, outerBoundary - 1, -1):
                 if gamefield[y][x] == gameEntities["enemy"][0]:
                     gamefield[y][x] = gameEntities["none"][0]
                     if x == len(gamefield[y]) - outerBoundary - 1:
-                        gamefield[y + 1][x] = gameEntities["enemy"][0]
+                        gamefield[y + 1][x] = gameEntities["enemy"][0].copy()
                     else:
-                        gamefield[y][x + 1] = gameEntities["enemy"][0]
+                        gamefield[y][x + 1] = gameEntities["enemy"][0].copy()
 
 
 def move(direction):
@@ -122,20 +123,69 @@ def playerOnGamefield(newplayerx):
     currentPos = [i[0] for i in gamefield[playerY]].index(gameEntities["player"][0][0])
     playerX = newplayerx
     if round(playerX) != currentPos:
-        gamefield[playerY][currentPos] = gameEntities["none"][0]
+        gamefield[playerY][currentPos] = gameEntities["none"][0].copy()
     gamefield[playerY][round(playerX)] = gameEntities["player"][0]
 
 
 def shoot():
-    return
+    global gamefield
+    shotPlacement = round(playerX)
+    if gamefield[playerY - 1][shotPlacement] == gameEntities["none"][0]:
+        gamefield[playerY - 1][shotPlacement] = gameEntities["projectile"][0].copy()
+    else:
+        gamefield[playerY - 1][shotPlacement][1] += gameEntities["projectile"][0][1]
+        checkIfDead(playerY - 1, shotPlacement)
+
+
+def shotmovement():
+    for ypos, y in enumerate(gamefield):
+        for xpos, x in enumerate(y):
+            if x[0] == gameEntities["projectile"][0][0]:
+                subtract = 1
+                if x[3]:
+                    subtract = -1
+                if gamefield[ypos + subtract][xpos] == gameEntities["none"][0] and 0 < ypos < len(gamefield) - 1:
+                    gamefield[ypos + subtract][xpos] = x
+                else:
+                    gamefield[ypos + subtract][xpos][1] += x[1]
+                    checkIfDead(ypos + subtract, xpos)
+
+                gamefield[ypos][xpos] = gameEntities["none"][0].copy()
+
+
+# TODO This is the block-remove-function without any animation
+def checkIfDead(ypos, xpos):
+    global gamefield
+    if gamefield[ypos][xpos][1] <= 0:
+        if gamefield[ypos][xpos][0] == gameEntities["player"][0][0]:
+            gameOver()
+        else:
+            gamefield[ypos][xpos] = gameEntities["none"][0].copy()
+
+
+# END block-remove
+
+def gameOver():
+    print("Game Over!")
+    return False
+
+
+def executeOnTick(tick, executeFunction):
+    if currentTick % tick == 0:
+        executeFunction()
 
 
 def gamefieldrender():
     # renders the gamefield based upon the color parameters in the dictionary "gameEntities"
-    colorcode = {i[0]: i[1] for i in list(gameEntities.values())}
+    colorcode = {i[0][0]: i[1] for i in list(gameEntities.values())}
     for ypos, y in enumerate(gamefield):
         for xpos, x in enumerate(y):
-            img[ypos][xpos] = colorcode[tuple(x)]
+            pixeldata = colorcode[x[0]].copy()
+            # TODO Fix healtbar display
+            if x[0] not in [gameEntities["projectile"][0][0], gameEntities["none"][0][0], gameEntities["player"][0][0]]:
+                for count, color in enumerate(pixeldata):
+                    pixeldata[count] = round(color * x[1] / gameEntities[x[0]][0][1])
+            img[ypos][xpos] = pixeldata
     # sets the image onto the lighthouse once done
     Pyghthouse.set_image(p, img)
 
@@ -146,8 +196,9 @@ def main():
     init()
     initgamefield(4)
     gamefieldrender()
-    for i in range(1000):
-        moveenemies()
+    for i in range(10000):
+        executeOnTick(30, moveenemies)
+        executeOnTick(3, shotmovement)
         gamefieldrender()
         time.sleep(1 / 30)
         currentTick += 1
