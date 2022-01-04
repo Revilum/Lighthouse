@@ -104,25 +104,23 @@ def moveenemies():
 
 
 def move(direction):
-    global playerX, lastTick
     # activates once player inputs movement and waits for key-release unless boundaries reached
     # speed is controlled by global variable "playerSpeed"
     while direction == "right" and keyboard.is_pressed("d"):
         if playerX < len(gamefield[0]) - 1 - outerBoundary:
-            playerX += playerSpeed
-            playerOnGamefield()
+            playerOnGamefield(playerX + playerSpeed)
             time.sleep(0.005)
     while direction == "left" and keyboard.is_pressed("a"):
         if playerX > 0 + outerBoundary:
-            playerX -= playerSpeed
-            playerOnGamefield()
+            playerOnGamefield(playerX - playerSpeed)
             time.sleep(0.005)
 
 
-def playerOnGamefield():
-    global gamefield
+def playerOnGamefield(newplayerx):
+    global gamefield, playerX
     # moves the player on the gamefield if neccesary and transfers his current position into the gamefield
-    currentPos = [i[0][0] for i in gamefield[playerY]].index(gameEntities["player"][0][0])
+    currentPos = [i[0] for i in gamefield[playerY]].index(gameEntities["player"][0][0])
+    playerX = newplayerx
     if round(playerX) != currentPos:
         gamefield[playerY][currentPos] = gameEntities["none"][0]
     gamefield[playerY][round(playerX)] = gameEntities["player"][0]
@@ -137,7 +135,6 @@ def gamefieldrender():
     colorcode = {i[0]: i[1] for i in list(gameEntities.values())}
     for ypos, y in enumerate(gamefield):
         for xpos, x in enumerate(y):
-            print(x)
             img[ypos][xpos] = colorcode[tuple(x)]
     # sets the image onto the lighthouse once done
     Pyghthouse.set_image(p, img)
