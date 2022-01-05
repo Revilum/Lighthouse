@@ -1,4 +1,5 @@
 import time
+from math import ceil, floor
 from pyghthouse import Pyghthouse
 import keyboard
 import random
@@ -7,8 +8,10 @@ import random
 p = Pyghthouse("MrSubidubi", "API-TOK_5lLL-mYtC-Iisr-q76Q-YiH+",
                ignore_ssl_cert=True)  # Hier eigene Werte eintragen!
 img = Pyghthouse.empty_image()
+tps = 30  # Ticks per second
 currentTick = 0
 lastTick = 0
+shotTrailLength = 4
 swapEnemyDirection = False
 gamefield = [[[]]]
 outerBoundary = 1
@@ -20,13 +23,14 @@ barrierSpawnRow = len(img) - 6
 firstEnemySpawnRow = 1
 EnemySpawnChance = 1
 barrierHP = 50
+shotTracking = [[]]
 gameEntities = {
     "enemy": [["enemy", 1], [0, 255, 255]],
     "barrier": [["barrier", barrierHP], [255, 0, 0]],
     "bedrock": [["bedrock", -1], [0, 255, 255]],
     "none": [["none", 0], [0, 0, 0]],
     "player": [["player", 3, playerX], [255, 0, 0]],
-    "projectile": [["projectile", -1, playerX, True], [255, 255, 255]]  # Fourth parameter indicates upward movement
+    "projectile": [["projectile", -1, playerY - 1, True], [255, 255, 255]]  # Fourth parameter indicates upward movement
 }
 
 
@@ -44,9 +48,14 @@ def init():
 
 
 def resetgamefield():
-    global gamefield
+    global gamefield, shotTracking
     # iniializes a gamefield (here based upon dimensions of the image of the lighthouse) with elemets of type "none"
-    gamefield = [[gameEntities["none"][0].copy() for j in range(len(img[0]))] for i in range(len(img))]
+    gamefield = [[gameEntities["none"][0].copy() for j in range(len(img[i]))] for i in range(len(img))]
+    shotTracking = [[[False, False] for j in range(len(gamefield[i]))] for i in range(len(gamefield))]
+
+
+def checkPosForID(ycord, xcord, type):
+    return gamefield[ycord][xcord][0] == gameEntities[type][0][0]
 
 
 def initgamefield(barriers):
@@ -87,21 +96,21 @@ def moveenemies():
     for y in range(barrierSpawnRow - 1, firstEnemySpawnRow - 1, -1):
         if (y + int(swapEnemyDirection)) % 2 == 0:
             for x in range(outerBoundary, len(gamefield[y]) - outerBoundary):
-                if gamefield[y][x] == gameEntities["enemy"][0]:
-                    gamefield[y][x] = gameEntities["none"][0].copy()
+                if checkPosForID(y, x, "enemy"):
                     if (y + int(swapEnemyDirection)) % 2 == 0:
                         if x == outerBoundary:
-                            gamefield[y + 1][x] = gameEntities["enemy"][0].copy()
+                            gamefield[y + 1][x] = gamefield[y][x].copy()
                         else:
-                            gamefield[y][x - 1] = gameEntities["enemy"][0].copy()
+                            gamefield[y][x - 1] = gamefield[y][x].copy()
+                    gamefield[y][x] = gameEntities["none"][0].copy()
         else:
             for x in range(len(gamefield[y]) - outerBoundary - 1, outerBoundary - 1, -1):
-                if gamefield[y][x] == gameEntities["enemy"][0]:
-                    gamefield[y][x] = gameEntities["none"][0]
+                if checkPosForID(y, x, "enemy"):
                     if x == len(gamefield[y]) - outerBoundary - 1:
-                        gamefield[y + 1][x] = gameEntities["enemy"][0].copy()
+                        gamefield[y + 1][x] = gamefield[y][x].copy()
                     else:
-                        gamefield[y][x + 1] = gameEntities["enemy"][0].copy()
+                        gamefield[y][x + 1] = gamefield[y][x].copy()
+                    gamefield[y][x] = gameEntities["none"][0]
 
 
 def move(direction):
@@ -138,6 +147,16 @@ def shoot():
 
 
 def shotmovement():
+    global shotTracking
+    # records old place of shots before they might be deleteds
+    for i in range(len(gamefield)):
+        for j in range(len(gamefield[i])):
+            if gamefield[i][j][0] == gameEntities["projectile"][0][0]:
+                shotTracking[i][j] = [True,
+                                      gamefield[i][j][len(gameEntities["projectile"][0] - 2)].copy()]  # TODO CHECK
+            else:
+                shotTracking[i][j] = [False, False]
+    # moves shots in specified direction
     for ypos, y in enumerate(gamefield):
         for xpos, x in enumerate(y):
             if x[0] == gameEntities["projectile"][0][0]:
@@ -151,6 +170,7 @@ def shotmovement():
                     checkIfDead(ypos + subtract, xpos)
 
                 gamefield[ypos][xpos] = gameEntities["none"][0].copy()
+    # TODO move shots smoother
 
 
 # TODO This is the block-remove-function without any animation
@@ -175,17 +195,33 @@ def executeOnTick(tick, executeFunction):
         executeFunction()
 
 
+# TODO TEST!
+def playerRenderer(imginput):
+    for x in range(floor(playerX), ceil(playerX) + 1):
+        for count, colorvalue in enumerate(gameEntities["player"][1]):
+            imginput[playerY][x][count] = round(colorvalue * (1 - playerX - count))
+    return imginput
+
+
+def shotTrails(imginput):
+        # TODO Add trails based upon shotTrailLength and shotTracking
+    return
+
 def gamefieldrender():
     # renders the gamefield based upon the color parameters in the dictionary "gameEntities"
     colorcode = {i[0][0]: i[1] for i in list(gameEntities.values())}
+    renderImage = img
     for ypos, y in enumerate(gamefield):
         for xpos, x in enumerate(y):
             pixeldata = colorcode[x[0]].copy()
             # TODO Fix healtbar display
-            if x[0] not in [gameEntities["projectile"][0][0], gameEntities["none"][0][0], gameEntities["player"][0][0]]:
+            if x[0] not in [gameEntities["projectile"][0][0], gameEntities["none"][0][0],
+                            gameEntities["player"][0][0]]:
                 for count, color in enumerate(pixeldata):
                     pixeldata[count] = round(color * x[1] / gameEntities[x[0]][0][1])
-            img[ypos][xpos] = pixeldata
+            renderImage[ypos][xpos] = pixeldata
+    # seperately aliases the player onto the board
+    renderImage = playerRenderer(renderImage)
     # sets the image onto the lighthouse once done
     Pyghthouse.set_image(p, img)
 
@@ -200,7 +236,7 @@ def main():
         executeOnTick(30, moveenemies)
         executeOnTick(3, shotmovement)
         gamefieldrender()
-        time.sleep(1 / 30)
+        time.sleep(1 / tps)
         currentTick += 1
     Pyghthouse.close(p)
 
