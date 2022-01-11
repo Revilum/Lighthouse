@@ -5,8 +5,7 @@ import keyboard
 import random
 
 # BEGIN define global parameters
-p = Pyghthouse("MrSubidubi", "API-TOK_5lLL-mYtC-Iisr-q76Q-YiH+",
-               ignore_ssl_cert=True)  # Hier eigene Werte eintragen!
+p = Pyghthouse("MrSubidubi", "API-TOK_Ct7J-6Sr/-mIXG-/h0X-In32")  # Hier eigene Werte eintragen!
 img = Pyghthouse.empty_image()
 tps = 30  # Ticks per second
 currentTick = 0
@@ -153,7 +152,7 @@ def shotmovement():
         for j in range(len(gamefield[i])):
             if gamefield[i][j][0] == gameEntities["projectile"][0][0]:
                 shotTracking[i][j] = [True,
-                                      gamefield[i][j][len(gameEntities["projectile"][0] - 2)].copy()]  # TODO CHECK
+                                      gamefield[i][j][len(gameEntities["projectile"][0]) - 2]]  # TODO CHECK
             else:
                 shotTracking[i][j] = [False, False]
     # moves shots in specified direction
@@ -199,13 +198,14 @@ def executeOnTick(tick, executeFunction):
 def playerRenderer(imginput):
     for x in range(floor(playerX), ceil(playerX) + 1):
         for count, colorvalue in enumerate(gameEntities["player"][1]):
-            imginput[playerY][x][count] = round(colorvalue * (1 - playerX - count))
+            imginput[playerY][x][count] = round(colorvalue * (1 - abs(playerX - x)))
     return imginput
 
 
 def shotTrails(imginput):
-        # TODO Add trails based upon shotTrailLength and shotTracking
+    # TODO Add trails based upon shotTrailLength and shotTracking
     return
+
 
 def gamefieldrender():
     # renders the gamefield based upon the color parameters in the dictionary "gameEntities"
